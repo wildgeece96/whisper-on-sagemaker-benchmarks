@@ -1,0 +1,47 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
+{
+	"name": "Neuronx",
+	// From https://gallery.ecr.aws/neuron/pytorch-training-neuronx
+	"image": "public.ecr.aws/neuron/pytorch-inference-neuronx:2.5.1-neuronx-py310-sdk2.21.0-ubuntu22.04",
+	"runArgs": [
+		"--device=/dev/neuron0", // inf2.xlarge, inf2.8xlarge, trn1.2xlarge
+		"--device=/dev/neuron1",
+		"--device=/dev/neuron2",
+		"--device=/dev/neuron3",
+		"--device=/dev/neuron4",
+		"--device=/dev/neuron5", // in2.24xlaege
+		"--device=/dev/neuron6",
+		"--device=/dev/neuron7",
+		"--device=/dev/neuron8",
+		"--device=/dev/neuron9",
+		"--device=/dev/neuron10",
+		"--device=/dev/neuron11", // in2.48xlaege
+		"--device=/dev/neuron12",
+		"--device=/dev/neuron13",
+		"--device=/dev/neuron14",
+		"--device=/dev/neuron15"  // Trn1.32xlarge
+	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python"
+			]
+		}
+	},
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "pip install jupyterlab"
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "model-server"
+}
