@@ -1,3 +1,10 @@
+models/
+dec_dir/
+enc_dir/
+gpu_model/
+neuron_model/
+neuronxcc-*
+gpu-package/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

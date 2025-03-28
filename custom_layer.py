@@ -1,30 +1,10 @@
-"""This inference code is also based on
-https://github.com/aws-samples/amazon-sagemaker-host-and-inference-whisper-model/blob/main/huggingface/code/inference.py
-"""
-
-import os
-import types
-import logging
-import io
-import tempfile
-import json
-import time
 
 import torch
 import torch.nn.functional as F
 from transformers.modeling_outputs import BaseModelOutputWithPastAndCrossAttentions,BaseModelOutput
-from transformers import WhisperProcessor, WhisperForConditionalGeneration, WhisperConfig
-from transformers import pipeline
-from datasets import load_dataset
-
-MODEL_ID = "openai/whisper-large-v3"
 
 
-def model_fn(model_dir):
-    processor = WhisperProcessor.from_pretrained(MODEL_ID)
-    config = WhisperConfig.from_pretrained(MODEL_ID)
-    model = WhisperForConditionalGeneration(config)
-
+def make_forward_neuron(processor, output_attentions=False):
     def enc_f(self, input_features, attention_mask, **kwargs):
         if hasattr(self, 'forward_neuron'):
             out = self.forward_neuron(input_features, attention_mask)
@@ -79,62 +59,4 @@ def model_fn(model_dir):
         # unpad the output before returning
         out = out[:, :inp.shape[1], :]
         return out
-
-    if not hasattr(model.model.encoder, 'forward_'): model.model.encoder.forward_ = model.model.encoder.forward
-    if not hasattr(model.model.decoder, 'forward_'): model.model.decoder.forward_ = model.model.decoder.forward
-    if not hasattr(model.proj_out, 'forward_'): model.proj_out.forward_ = model.proj_out.forward
-
-    model.model.encoder.forward = types.MethodType(enc_f, model.model.encoder)
-    model.model.decoder.forward = types.MethodType(dec_f, model.model.decoder)
-    model.proj_out.forward = types.MethodType(proj_out_f, model.proj_out)
-    max_dec_len = 128
-    model.model.decoder.max_length = max_dec_len
-    model.proj_out.max_length = max_dec_len
-
-    model.model.encoder.forward_neuron = torch.jit.load(
-        os.path.join(model_dir, "whisper_large-v3_1_neuron_encoder.pt")
-        )
-    model.model.decoder.forward_neuron = torch.jit.load(
-        os.path.join(model_dir, "whisper_large-v3_1_128_neuron_decoder.pt")
-    )
-    model.proj_out.forward_neuron = torch.jit.load(
-        os.path.join(model_dir, "whisper_large-v3_1_128_neuron_proj.pt")
-    )
-
-    # warmpup whisper
-    dataset = load_dataset("hf-internal-testing/librispeech_asr_dummy", "clean", split="validation")
-    # sample #3 is ~9.9seconds and produces 33 output tokens + pad token
-    sample = dataset[3]["audio"]
-    input_features = processor(sample["array"], sampling_rate=sample["sampling_rate"], return_tensors="pt").input_features
-    model.generate(input_features)
-    pipe = pipeline(
-        "automatic-speech-recognition",
-        model=MODEL_ID,
-        chunk_length_s=30
-    )
-    pipe.model = model
-    return pipe
-
-
-def transform_fn(model, request_body, request_content_type, response_content_type="application/json"):
-     
-    logging.info("Check out the request_body type: %s", type(request_body))
-    
-    start_time = time.time()
-    
-    file = io.BytesIO(request_body)
-    tfile = tempfile.NamedTemporaryFile(delete=False)
-    tfile.write(file.read())
-
-    logging.info("Start to generate the transcription ...")
-    result = model(tfile.name, batch_size=1)["text"]
-    
-    logging.info("Upload transcription results back to S3 bucket ...")
-    
-    # Calculate the elapsed time
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    logging.info("The time for running this program is %s", elapsed_time)
-    
-    return json.dumps(result), response_content_type   
-
+    return enc_f, dec_f, proj_out_f
