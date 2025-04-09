@@ -3,6 +3,7 @@ os.environ['NEURON_RT_NUM_CORES']='1'
 import types
 import torch
 import torch_neuronx
+from datasets import load_dataset
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 import sagemaker
 from sagemaker.pytorch.model import PyTorchModel
@@ -187,7 +188,8 @@ def deploy_to_sagemaker(sagemaker_session, role, compressed_file):
     
     
     model = PyTorchModel(
-        image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference-neuronx:2.5.1-neuronx-py310-sdk2.21.0-ubuntu22.04",
+        # image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference-neuronx:2.5.1-neuronx-py310-sdk2.21.0-ubuntu22.04",
+        image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference-neuronx:2.5.1-neuronx-py310-sdk2.22.0-ubuntu22.04",
         model_data=model_data,
         entry_point="inference.py",
         model_server_workers=1,
@@ -230,7 +232,21 @@ if __name__ == "__main__":
     compile_dir = compile_model()
     compressed_file = compress_model(compile_dir)
     predictor = deploy_to_sagemaker(sess, role, compressed_file)
-    
-    # 推論の実行
-    result = run_inference(predictor, "sample_audio.wav")
-    print(result)
+    # # 推論の実行
+    # # データセットのロード
+    # dataset = load_dataset('MLCommons/peoples_speech', "microset", split='train', streaming=True)
+
+    # # 最初のサンプルを取得
+    # sample = next(iter(dataset))
+
+    # # 音声データとサンプリングレートを取得
+    # audio_array = sample["audio"]["array"]
+    # sampling_rate = sample["audio"]["sampling_rate"]
+
+    # # 音声データをテンソルに変換
+    # audio_tensor = torch.tensor(audio_array, dtype=torch.float32)
+
+    # # 音声データをファイルに保存
+    # torchaudio.save("sample_audio.wav", audio_tensor.unsqueeze(0), sampling_rate)
+    # result = run_inference(predictor, "sample_audio.wav")
+    # print(result)

@@ -13,9 +13,10 @@ from sagemaker.serializers import DataSerializer
 from sagemaker.deserializers import JSONDeserializer
 
 ENDPOINT_NAMES = [
-    "whisper-large-v3-gpu-1742380315-g4dn",
+    # "whisper-large-v3-gpu-1742380315-g4dn",
     # "whisper-large-v3-gpu-1742372287-g5",
     # "whisper-large-v3-gpu-1742288179-g6"
+    "pytorch-inference-neuronx-ml-inf2-2025-04-09-09-30-09-099"   
 ]
 
 

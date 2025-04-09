@@ -84,36 +84,43 @@ def model_fn(model_dir):
     if not hasattr(model.model.decoder, 'forward_'): model.model.decoder.forward_ = model.model.decoder.forward
     if not hasattr(model.proj_out, 'forward_'): model.proj_out.forward_ = model.proj_out.forward
 
-    model.model.encoder.forward = types.MethodType(enc_f, model.model.encoder)
-    model.model.decoder.forward = types.MethodType(dec_f, model.model.decoder)
-    model.proj_out.forward = types.MethodType(proj_out_f, model.proj_out)
-    max_dec_len = 128
-    model.model.decoder.max_length = max_dec_len
-    model.proj_out.max_length = max_dec_len
+    try:
+        model.model.encoder.forward = types.MethodType(enc_f, model.model.encoder)
+        model.model.decoder.forward = types.MethodType(dec_f, model.model.decoder)
+        model.proj_out.forward = types.MethodType(proj_out_f, model.proj_out)
+        max_dec_len = 128
+        model.model.decoder.max_length = max_dec_len
+        model.proj_out.max_length = max_dec_len
 
-    model.model.encoder.forward_neuron = torch.jit.load(
-        os.path.join(model_dir, "whisper_large-v3_1_neuron_encoder.pt")
+        model.model.encoder.forward_neuron = torch.jit.load(
+            os.path.join(model_dir, "whisper_large-v3_1_neuron_encoder.pt")
+            )
+        model.model.decoder.forward_neuron = torch.jit.load(
+            os.path.join(model_dir, "whisper_large-v3_1_128_neuron_decoder.pt")
         )
-    model.model.decoder.forward_neuron = torch.jit.load(
-        os.path.join(model_dir, "whisper_large-v3_1_128_neuron_decoder.pt")
-    )
-    model.proj_out.forward_neuron = torch.jit.load(
-        os.path.join(model_dir, "whisper_large-v3_1_128_neuron_proj.pt")
-    )
+        model.proj_out.forward_neuron = torch.jit.load(
+            os.path.join(model_dir, "whisper_large-v3_1_128_neuron_proj.pt")
+        )
 
-    # warmpup whisper
-    dataset = load_dataset("hf-internal-testing/librispeech_asr_dummy", "clean", split="validation")
-    # sample #3 is ~9.9seconds and produces 33 output tokens + pad token
-    sample = dataset[3]["audio"]
-    input_features = processor(sample["array"], sampling_rate=sample["sampling_rate"], return_tensors="pt").input_features
-    model.generate(input_features)
-    pipe = pipeline(
-        "automatic-speech-recognition",
-        model=MODEL_ID,
-        chunk_length_s=30
-    )
-    pipe.model = model
-    return pipe
+        # warmpup whisper
+        dataset = load_dataset("hf-internal-testing/librispeech_asr_dummy", "clean", split="validation")
+        # sample #3 is ~9.9seconds and produces 33 output tokens + pad token
+        sample = dataset[3]["audio"]
+        input_features = processor(sample["array"], sampling_rate=sample["sampling_rate"], return_tensors="pt").input_features
+        model.generate(input_features)
+        pipe = pipeline(
+            "automatic-speech-recognition",
+            model=MODEL_ID,
+            chunk_length_s=30
+        )
+        pipe.model = model
+        return pipe
+    except Exception as e:
+        logging.error(f"モデルロードエラー: {str(e)}")
+        # スタックトレースをログ出力
+        import traceback
+        logging.error(traceback.format_exc())
+        raise
 
 
 def transform_fn(model, request_body, request_content_type, response_content_type="application/json"):
